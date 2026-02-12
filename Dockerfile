@@ -1,41 +1,29 @@
-#---------- Stage 1: Build Frontend ----------
+# Stage 1 — build the app
 FROM node:18-alpine AS build
 
+# Set working directory
 WORKDIR /app
 
-# Copy package files first
+# Copy package.json and lock file
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
-# Copy full project
+# Copy all files
 COPY . .
 
-# Build Vite project
+# Build the app
 RUN npm run build
 
+# Stage 2 — serve with a lightweight server
+FROM nginx:alpine
 
-# ---------- Stage 2: Production ----------
-FROM node:18-alpine
+# Copy built files from build stage
+COPY --from=build /app/dist /usr/share/nginx/html
 
-WORKDIR /app
+# Expose port 80
+EXPOSE 80
 
-# Copy backend server folder
-COPY server ./server
-
-# Copy package files again
-COPY package*.json ./
-
-# Install only production dependencies
-RUN npm install --omit=dev
-
-# Copy built frontend from stage 1
-COPY --from=build /app/dist ./dist
-
-# Expose backend port
-EXPOSE 5000
-
-# Start backend server
-CMD ["node", "server/index.js"]
-
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
